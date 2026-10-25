@@ -156,7 +156,7 @@ export default function CalibrationPanel({
                 justifyContent: 'space-between',
                 padding: '0.85rem 1.15rem',
                 borderRadius: 'var(--radius-sm)',
-                background: isCurrent ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                background: isCurrent ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-secondary)',
                 border: isCurrent ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
                 transition: 'var(--transition)',
               }}
@@ -175,22 +175,21 @@ export default function CalibrationPanel({
                 </p>
 
                 {s.number === 8 && (
-                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Your known height:</span>
+                  <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Your known height:</span>
                     <input
                       type="number"
                       value={userHeightInput}
                       onChange={(e) => setUserHeightInput(e.target.value)}
-                      style={{ width: '60px', padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
-                      className="btn btn-secondary"
+                      style={{ width: '80px', padding: '0.35rem 0.65rem', fontSize: '0.85rem' }}
                     />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>cm</span>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', fontWeight: 600 }}>cm</span>
                   </div>
                 )}
 
                 {isCurrent && (
                   <div style={{ marginTop: '0.5rem' }}>
-                    <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '4px', background: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
                       <div
                         style={{
                           width: `${progress}%`,

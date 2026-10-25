@@ -1,20 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Cpu, Mail, Lock, LogIn, UserPlus, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Cpu, Mail, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const searchParams = useSearchParams();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'oauth_failed') {
+      setMessage({ text: 'Google sign-in failed. Please try again or use email.', type: 'error' });
+    }
+  }, [searchParams]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +56,8 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          // Must match exactly what's listed in Supabase Auth → URL Configuration → Redirect URLs
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -198,11 +205,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            ← Back to demo dashboard
-          </Link>
-        </div>
       </div>
     </div>
   );

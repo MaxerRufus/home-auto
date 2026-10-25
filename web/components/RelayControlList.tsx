@@ -100,14 +100,12 @@ export default function RelayControlList({
                         type="text"
                         value={editLabel}
                         onChange={(e) => setEditLabel(e.target.value)}
-                        className="btn btn-secondary"
-                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', width: '140px' }}
+                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.9rem', width: '150px' }}
                       />
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value as RelayCategory)}
-                        className="btn btn-secondary"
-                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}
+                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
                       >
                         <option value="light">Light</option>
                         <option value="fan">Fan</option>
@@ -118,15 +116,15 @@ export default function RelayControlList({
                       <button
                         onClick={() => saveEditing(relay.relay_index)}
                         className="btn btn-primary"
-                        style={{ padding: '0.3rem 0.6rem' }}
+                        style={{ padding: '0.4rem 0.75rem' }}
                       >
-                        <Check size={14} />
+                        <Check size={15} />
                       </button>
                     </div>
                   ) : (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="relay-title">{relay.label}</span>
+                        <span className="relay-title" style={{ color: 'var(--text-primary)' }}>{relay.label}</span>
                         <button
                           onClick={() => startEditing(relay)}
                           style={{ color: 'var(--text-muted)', display: 'inline-flex', padding: '2px' }}
@@ -135,7 +133,7 @@ export default function RelayControlList({
                           <Edit2 size={13} />
                         </button>
                       </div>
-                      <span className="relay-category">
+                      <span className="relay-category" style={{ color: 'var(--text-secondary)' }}>
                         Category: {relay.category.toUpperCase()} • Channel P{relay.relay_index}
                       </span>
                     </>
@@ -146,9 +144,10 @@ export default function RelayControlList({
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <span
                   style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    color: relay.state ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    color: relay.state ? 'var(--accent-orange)' : 'var(--text-muted)',
+                    letterSpacing: '0.04em',
                   }}
                 >
                   {relay.state ? 'ON' : 'OFF'}

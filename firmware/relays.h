@@ -45,7 +45,7 @@ private:
     uint8_t _lastRawSwitches;
     uint8_t _stableSwitches;
     unsigned long _lastDebounceTime[4];
-    static const unsigned long DEBOUNCE_DELAY_MS = 50;
+    // DEBOUNCE_DELAY_MS is defined as a macro in config.h (50UL)
 
     // Override timer
     unsigned long _overrideEndTime;

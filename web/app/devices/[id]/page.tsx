@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Cpu, Wifi, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Cpu, Wifi, WifiOff, RefreshCw, AlertCircle, Copy, Check, Trash2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import DeviceLiveTiles from '@/components/DeviceLiveTiles';
 import RelayControlList from '@/components/RelayControlList';
@@ -12,6 +12,7 @@ import AutomationSettings from '@/components/AutomationSettings';
 import CalibrationPanel from '@/components/CalibrationPanel';
 import EventsFeed from '@/components/EventsFeed';
 import HourlyCharts from '@/components/HourlyCharts';
+import DeleteDeviceModal from '@/components/DeleteDeviceModal';
 
 import { Device, Relay, DeviceEvent, SensorBlob, DeviceConfig, DeviceCalibration, DeviceState, RelayCategory } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
@@ -19,14 +20,17 @@ import { createClient } from '@/lib/supabase/client';
 export default function DeviceDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const deviceId = (params?.id as string) || 'demo-hub-living-room';
+  const deviceId = (params?.id as string);
 
   const [device, setDevice] = useState<Device | null>(null);
+  const [deviceNotFound, setDeviceNotFound] = useState(false);
   const [relays, setRelays] = useState<Relay[]>([]);
   const [events, setEvents] = useState<DeviceEvent[]>([]);
   const [blobs, setBlobs] = useState<SensorBlob[]>([]);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [copiedUid, setCopiedUid] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const supabase = createClient();
   const channelRef = useRef<any>(null);
@@ -37,12 +41,22 @@ export default function DeviceDetailPage() {
 
     async function loadData() {
       try {
+        if (!deviceId) return;
+
         // 1. Fetch Device Record
-        const { data: devData } = await supabase
+        const { data: devData, error: devErr } = await supabase
           .from('devices')
           .select('*')
           .eq('id', deviceId)
           .single();
+
+        if (devErr || !devData) {
+          if (isMounted) {
+            setDeviceNotFound(true);
+            setLoading(false);
+          }
+          return;
+        }
 
         // 2. Fetch Relays
         const { data: relData } = await supabase
@@ -69,79 +83,27 @@ export default function DeviceDetailPage() {
 
         if (!isMounted) return;
 
-        if (devData) {
-          setDevice(devData);
-          setIsOnline(Date.now() - new Date(devData.last_seen).getTime() < 60000);
-        } else {
-          // Fallback demo state
-          setDevice({
-            id: deviceId,
-            owner_id: 'demo-user',
-            name: 'Living Room Hub',
-            token_hash: 'demo-hash',
-            config: {
-              light_threshold: 35,
-              temp_threshold: 28,
-              auto_lights: true,
-              auto_plug: true,
-              light_off_delay_sec: 180,
-              temp_hysteresis: 2.0,
-            },
-            calibration: {
-              dark_baseline: 50,
-              daylight_baseline: 850,
-              light_a_contrib: 120,
-              light_b_contrib: 150,
-              both_contrib: 280,
-              accel_rest: 9.8,
-              knock_threshold: 6.0,
-              floor_dist_a: 220.0,
-              floor_dist_b: 220.0,
-              height_offset: 0.0,
-              direction_flipped: false,
-            },
-            last_state: {
-              occupancy: 2,
-              temperature: 24.8,
-              humidity: 49.0,
-              ambient_light: 65,
-              intensity: 75,
-              relays: [true, true, false, true],
-              manual_override: false,
-              override_remaining_sec: 0,
-            },
-            last_seen: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          });
-        }
+        setDevice(devData);
+        const online = devData.last_seen
+          ? Date.now() - new Date(devData.last_seen).getTime() < 60000
+          : false;
+        setIsOnline(online);
 
         if (relData && relData.length > 0) {
           setRelays(relData);
         } else {
-          // Default 4 relays per specification
+          // Hardware default 4 relays - all default to OFF (no fake active state)
           setRelays([
-            { id: '1', device_id: deviceId, relay_index: 0, label: 'Light A', category: 'light', state: true, updated_at: new Date().toISOString() },
-            { id: '2', device_id: deviceId, relay_index: 1, label: 'Light B', category: 'light', state: true, updated_at: new Date().toISOString() },
-            { id: '3', device_id: deviceId, relay_index: 2, label: 'Main Plug', category: 'plug', state: false, updated_at: new Date().toISOString() },
-            { id: '4', device_id: deviceId, relay_index: 3, label: 'Single Light', category: 'light', state: true, updated_at: new Date().toISOString() },
+            { id: '1', device_id: deviceId, relay_index: 0, label: 'Light A', category: 'light', state: false, updated_at: new Date().toISOString() },
+            { id: '2', device_id: deviceId, relay_index: 1, label: 'Light B', category: 'light', state: false, updated_at: new Date().toISOString() },
+            { id: '3', device_id: deviceId, relay_index: 2, label: 'Fan', category: 'fan', state: false, updated_at: new Date().toISOString() },
+            { id: '4', device_id: deviceId, relay_index: 3, label: 'Main Plug', category: 'plug', state: false, updated_at: new Date().toISOString() },
           ]);
         }
 
-        if (evData && evData.length > 0) {
-          setEvents(evData);
-        } else {
-          setEvents([
-            { id: 101, device_id: deviceId, type_code: 1, value: 175.5, metadata: { band: 'Average adult' }, created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
-            { id: 102, device_id: deviceId, type_code: 5, value: 0, metadata: { state: true, source: 'automation_light' }, created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
-            { id: 103, device_id: deviceId, type_code: 1, value: 161.0, metadata: { band: 'Average adult' }, created_at: new Date(Date.now() - 1000 * 60 * 8).toISOString() },
-            { id: 104, device_id: deviceId, type_code: 3, value: 7.2, metadata: { accel_spike: 7.2 }, created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-            { id: 105, device_id: deviceId, type_code: 4, value: 3, metadata: { switch_index: 3 }, created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString() },
-          ]);
-        }
-
-        if (blobData) {
-          setBlobs(blobData);
-        }
+        // Set real events or empty list (NO FAKE SAMPLES)
+        setEvents(evData || []);
+        setBlobs(blobData || []);
       } catch (err) {
         console.error('Data load exception:', err);
       } finally {
@@ -201,7 +163,7 @@ export default function DeviceDetailPage() {
 
       channel.subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
-          // Channel connected
+          // Connected to channel
         }
       });
 
@@ -216,7 +178,7 @@ export default function DeviceDetailPage() {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [deviceId]);
+  }, [deviceId, supabase]);
 
   // Command Senders over Realtime Channel
   const sendRealtimeCommand = (payload: any) => {
@@ -324,9 +286,9 @@ export default function DeviceDetailPage() {
 
   const handleToggleDirectionFlip = async () => {
     if (!device) return;
-    const nextFlipped = !device.calibration.direction_flipped;
+    const nextFlipped = !device.calibration?.direction_flipped;
     const updatedCal: DeviceCalibration = {
-      ...device.calibration,
+      ...(device.calibration || {} as DeviceCalibration),
       direction_flipped: nextFlipped,
     };
 
@@ -359,15 +321,46 @@ export default function DeviceDetailPage() {
     sendRealtimeCommand({ action: 'STOP_OVERRIDE' });
   };
 
-  if (loading || !device) {
+  const copyUid = () => {
+    if (device?.id) {
+      navigator.clipboard.writeText(device.id);
+      setCopiedUid(true);
+      setTimeout(() => setCopiedUid(false), 2000);
+    }
+  };
+
+  if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <div className="brand-icon" style={{ width: '48px', height: '48px', margin: '0 auto 1rem auto' }}>
+          <div className="brand-icon" style={{ width: '48px', height: '48px', margin: '0 auto 1rem auto', animation: 'pulse 1.5s ease-in-out infinite' }}>
             <Cpu size={28} />
           </div>
           <p style={{ color: 'var(--text-secondary)' }}>Connecting to device channel...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (deviceNotFound || !device) {
+    return (
+      <div style={{ minHeight: '100vh', paddingBottom: '4rem' }}>
+        <Navbar />
+        <main className="container" style={{ marginTop: '4rem', maxWidth: '520px', textAlign: 'center' }}>
+          <div className="glass-panel" style={{ padding: '3rem 2rem' }}>
+            <div className="tile-icon" style={{ width: '56px', height: '56px', margin: '0 auto 1.5rem', color: 'var(--accent-rose)', background: 'rgba(244, 63, 94, 0.1)' }}>
+              <AlertCircle size={30} />
+            </div>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.75rem' }}>Device Not Found</h1>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.75rem', lineHeight: 1.6 }}>
+              The device UID <code>{deviceId}</code> was not found in your Supabase database. It may have been deleted or the URL is incorrect.
+            </p>
+            <Link href="/" className="btn btn-primary" style={{ padding: '0.75rem 1.75rem', fontWeight: 600 }}>
+              <ArrowLeft size={16} />
+              <span>Back to Connected Devices</span>
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }
@@ -388,28 +381,66 @@ export default function DeviceDetailPage() {
         {/* Device Command Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div className="brand-icon" style={{ width: '48px', height: '48px' }}>
-              <Cpu size={26} />
+            <div
+              className="brand-icon"
+              style={{
+                width: '50px',
+                height: '50px',
+                borderRadius: '14px',
+                background: isOnline ? 'linear-gradient(135deg, var(--accent-green), #059669)' : 'linear-gradient(135deg, #374151, #1f2937)',
+                boxShadow: isOnline ? '0 0 20px rgba(16, 185, 129, 0.35)' : 'none',
+              }}
+            >
+              <Cpu size={28} />
             </div>
             <div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.2rem' }}>
                 {device.name}
               </h1>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                Persistent Channel: <code style={{ color: 'var(--accent-cyan)' }}>device:{device.id}</code> • Low Latency (100–200ms)
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  UID: {device.id}
+                </span>
+                <button
+                  onClick={copyUid}
+                  className="btn btn-ghost"
+                  title="Copy Device UID"
+                  style={{ padding: '2px 6px', fontSize: '0.75rem', color: copiedUid ? 'var(--accent-green)' : 'var(--text-muted)' }}
+                >
+                  {copiedUid ? <Check size={13} /> : <Copy size={13} />}
+                </button>
+              </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className={`badge ${isOnline ? 'badge-online' : 'badge-offline'}`}>
+            <span className={`badge ${isOnline ? 'badge-online' : 'badge-offline'}`} style={{ padding: '0.45rem 0.95rem', fontSize: '0.825rem', borderRadius: '9999px' }}>
               <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} />
-              {isOnline ? 'Device Live (WebSocket)' : 'Offline / Reconnecting'}
+              {isOnline ? 'Device Online (Realtime)' : 'Offline / Standby'}
             </span>
+
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.8rem',
+                borderRadius: '12px',
+                color: 'var(--accent-rose)',
+                borderColor: 'rgba(244, 63, 94, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+              }}
+              title="Remove hub device"
+            >
+              <Trash2 size={15} />
+              <span>Remove Hub</span>
+            </button>
           </div>
         </div>
 
-        {/* 1. Live Sensor Tiles */}
+        {/* 1. Live Sensor Tiles - NO FALSE VALUES */}
         <DeviceLiveTiles
           state={device.last_state}
           isOnline={isOnline}
@@ -423,8 +454,8 @@ export default function DeviceDetailPage() {
             {/* Relays List */}
             <RelayControlList
               relays={relays}
-              overrideActive={device.last_state.manual_override}
-              overrideRemainingSec={device.last_state.override_remaining_sec}
+              overrideActive={device.last_state?.manual_override || false}
+              overrideRemainingSec={device.last_state?.override_remaining_sec || 0}
               onToggleRelay={handleToggleRelay}
               onUpdateRelayMeta={handleUpdateRelayMeta}
               onStopOverride={handleStopOverride}
@@ -432,19 +463,38 @@ export default function DeviceDetailPage() {
 
             {/* Intensity Mode Slider */}
             <IntensitySlider
-              intensity={device.last_state.intensity || 0}
+              intensity={device.last_state?.intensity || 0}
               onChangeIntensity={handleChangeIntensity}
             />
 
-            {/* Automation Rules */}
+            {/* Automation Rules (With Node-based Builder Tab!) */}
             <AutomationSettings
-              config={device.config}
+              config={device.config || {
+                light_threshold: 35,
+                temp_threshold: 28,
+                auto_lights: true,
+                auto_plug: true,
+                light_off_delay_sec: 180,
+                temp_hysteresis: 2.0,
+              }}
               onSaveConfig={handleSaveConfig}
             />
 
             {/* Guided Calibration Panel */}
             <CalibrationPanel
-              calibration={device.calibration}
+              calibration={device.calibration || {
+                dark_baseline: 50,
+                daylight_baseline: 850,
+                light_a_contrib: 120,
+                light_b_contrib: 150,
+                both_contrib: 280,
+                accel_rest: 9.8,
+                knock_threshold: 6.0,
+                floor_dist_a: 220.0,
+                floor_dist_b: 220.0,
+                height_offset: 0.0,
+                direction_flipped: false,
+              }}
               onStartStep={handleStartCalibrationStep}
               onCancelCalibration={handleCancelCalibration}
               onToggleDirectionFlip={handleToggleDirectionFlip}
@@ -461,6 +511,14 @@ export default function DeviceDetailPage() {
           </div>
         </div>
       </main>
+
+      <DeleteDeviceModal
+        isOpen={isDeleteModalOpen}
+        deviceId={device.id}
+        deviceName={device.name}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onSuccess={() => router.push('/')}
+      />
     </div>
   );
 }

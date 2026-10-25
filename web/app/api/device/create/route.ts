@@ -48,6 +48,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: devErr.message }, { status: 500 });
     }
 
+    // Initialize the 4 default relays matching the ESP8266 hardware specification:
+    // Relay 0: Light A (PCF8574 P0)
+    // Relay 1: Light B (PCF8574 P1)
+    // Relay 2: Fan (PCF8574 P2)
+    // Relay 3: Main Plug (ESP8266 GPIO12)
+    await adminSupabase.from('relays').insert([
+      { device_id: newDevice.id, relay_index: 0, label: 'Light A', category: 'light', state: false },
+      { device_id: newDevice.id, relay_index: 1, label: 'Light B', category: 'light', state: false },
+      { device_id: newDevice.id, relay_index: 2, label: 'Fan', category: 'fan', state: false },
+      { device_id: newDevice.id, relay_index: 3, label: 'Main Plug', category: 'plug', state: false },
+    ]);
+
     return NextResponse.json({
       success: true,
       device: newDevice,

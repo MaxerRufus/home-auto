@@ -32,11 +32,18 @@ export default function Navbar({ userEmail, onSignOut }: NavbarProps) {
   return (
     <nav className="navbar" role="navigation" aria-label="Main Navigation">
       <div className="container nav-content">
-        <Link href="/" className="brand-logo" aria-label="Smart Home Hub Dashboard">
-          <div className="brand-icon">
+        <Link href="/" className="brand-logo" aria-label="Hume Smart Home Dashboard">
+          <div
+            className="brand-icon"
+            style={{
+              background: 'linear-gradient(135deg, var(--accent-orange), #ea580c)',
+              boxShadow: '0 0 18px var(--accent-orange-glow)',
+              borderRadius: '12px',
+            }}
+          >
             <Cpu size={22} />
           </div>
-          <span>Smart Home Hub</span>
+          <span style={{ fontWeight: 800, letterSpacing: '-0.02em' }}>Hume</span>
         </Link>
 
         <div className="nav-actions">
