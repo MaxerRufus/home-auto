@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/device/create/route": "app/api/device/create/route.js",
+  "/api/device/event/route": "app/api/device/event/route.js",
+  "/devices/[id]/page": "app/devices/[id]/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/api/device/session/route": "app/api/device/session/route.js",
+  "/api/device/ingest/route": "app/api/device/ingest/route.js"
+}
